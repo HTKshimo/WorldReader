@@ -131,8 +131,9 @@ public class MainActivity extends AppCompatActivity {
                     String picturePath = cursor.getString(columnIndex);
                     cursor.close();
                     Bitmap bitmap = BitmapFactory.decodeFile(picturePath);
-                    imageView.setImageBitmap(bitmap);
-                    uploadBitmap(bitmap);
+                    Bitmap compressed = getResizedBitmap(bitmap, 800);
+                    imageView.setImageBitmap(compressed);
+                    uploadBitmap(compressed);
                 }
         }
     }
@@ -152,6 +153,21 @@ public class MainActivity extends AppCompatActivity {
         return byteArrayOutputStream.toByteArray();
     }
 
+    private Bitmap getResizedBitmap(Bitmap image, int maxSize) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        float bitmapRatio = (float)width / (float) height;
+        if (bitmapRatio > 1) {
+            width = maxSize;
+            height = (int) (width / bitmapRatio);
+        } else {
+            height = maxSize;
+            width = (int) (height * bitmapRatio);
+        }
+        return Bitmap.createScaledBitmap(image, width, height, true);
+    }
+
     private void uploadBitmap(final Bitmap bitmap) {
 
         //getting the tag from the edittext
@@ -164,7 +180,8 @@ public class MainActivity extends AppCompatActivity {
                     public void onResponse(NetworkResponse response) {
                         try {
                             JSONObject obj = new JSONObject(new String(response.data));
-                            Toast.makeText(getApplicationContext(), obj.getString("message"), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getApplicationContext(), obj.getString("data"), Toast.LENGTH_LONG).show();
+                            System.out.println("Hello hi: " + obj.toString());
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
