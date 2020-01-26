@@ -22,6 +22,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.NetworkResponse;
@@ -52,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
 //    private Uri videoUri = null;
 //
     private ImageView imageView;
+    private TextView textView;
     private Button button;
     private Button buttonCamera;
     private TextToSpeech mTTS;
@@ -69,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
         imageView = findViewById(R.id.imageView);
         button = findViewById(R.id.button);
         buttonCamera = findViewById(R.id.buttonCamera);
+        textView = findViewById(R.id.textView);
 
         buttonCamera.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -207,7 +210,8 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             final JSONObject obj = new JSONObject(new String(response.data));
                             final String text = obj.getString("data");
-                            Toast.makeText(getApplicationContext(), text, Toast.LENGTH_LONG).show();
+//                            Toast.makeText(getApplicationContext(), text, Toast.LENGTH_LONG).show();
+                            textView.setText(text);
                             mTTS = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
                                 @Override
                                 public void onInit(int status) {
