@@ -17,6 +17,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.speech.tts.TextToSpeech;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -36,6 +38,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.net.Authenticator;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -43,12 +46,15 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST = 0;
     private static final int RESULT_LOAD_IMAGE = 1;
+    private static final int RESULT_CAPTURE_IMAGE = 2;
 //    private final int REQUEST_CODE = 1;
 //    private final int VIDEO_REQUEST = 101;
 //    private Uri videoUri = null;
 //
-    ImageView imageView;
-    Button button;
+    private ImageView imageView;
+    private Button button;
+    private Button buttonCamera;
+    private TextToSpeech mTTS;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +68,15 @@ public class MainActivity extends AppCompatActivity {
 
         imageView = findViewById(R.id.imageView);
         button = findViewById(R.id.button);
+        buttonCamera = findViewById(R.id.buttonCamera);
+
+        buttonCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                startActivityForResult(i, RESULT_CAPTURE_IMAGE);
+            }
+        });
 
         button.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -120,21 +135,24 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        switch (requestCode){
-            case RESULT_LOAD_IMAGE:
-                if (resultCode == RESULT_OK){
-                    Uri selectedImage = data.getData();
-                    String[] filePathColumn = {MediaStore.Images.Media.DATA};
-                    Cursor cursor = getContentResolver().query(selectedImage, filePathColumn, null, null, null);
-                    cursor.moveToFirst();
-                    int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
-                    String picturePath = cursor.getString(columnIndex);
-                    cursor.close();
-                    Bitmap bitmap = BitmapFactory.decodeFile(picturePath);
-                    Bitmap compressed = getResizedBitmap(bitmap, 800);
-                    imageView.setImageBitmap(compressed);
-                    uploadBitmap(compressed);
-                }
+        if(requestCode == RESULT_CAPTURE_IMAGE) {
+            Bitmap bitmap = (Bitmap)data.getExtras().get("data");
+            imageView.setImageBitmap(bitmap);
+            uploadBitmap(bitmap);
+        }else if(requestCode == RESULT_LOAD_IMAGE) {
+            if (resultCode == RESULT_OK) {
+                Uri selectedImage = data.getData();
+                String[] filePathColumn = {MediaStore.Images.Media.DATA};
+                Cursor cursor = getContentResolver().query(selectedImage, filePathColumn, null, null, null);
+                cursor.moveToFirst();
+                int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+                String picturePath = cursor.getString(columnIndex);
+                cursor.close();
+                Bitmap bitmap2 = BitmapFactory.decodeFile(picturePath);
+                Bitmap compressed = getResizedBitmap(bitmap2, 700);
+                imageView.setImageBitmap(compressed);
+                uploadBitmap(compressed);
+            }
         }
     }
 
@@ -168,6 +186,14 @@ public class MainActivity extends AppCompatActivity {
         return Bitmap.createScaledBitmap(image, width, height, true);
     }
 
+    private void speak(String text) {
+        float pitch = (float) 1;
+        float speed = (float) 1;
+        mTTS.setPitch(pitch);
+        mTTS.setSpeechRate(speed);
+        mTTS.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+    }
+
     private void uploadBitmap(final Bitmap bitmap) {
 
         //getting the tag from the edittext
@@ -179,8 +205,25 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(NetworkResponse response) {
                         try {
-                            JSONObject obj = new JSONObject(new String(response.data));
-                            Toast.makeText(getApplicationContext(), obj.getString("data"), Toast.LENGTH_LONG).show();
+                            final JSONObject obj = new JSONObject(new String(response.data));
+                            final String text = obj.getString("data");
+                            Toast.makeText(getApplicationContext(), text, Toast.LENGTH_LONG).show();
+                            mTTS = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                                @Override
+                                public void onInit(int status) {
+                                    if (status == TextToSpeech.SUCCESS) {
+                                        int result = mTTS.setLanguage(Locale.ENGLISH);
+                                        if (result == TextToSpeech.LANG_MISSING_DATA
+                                                || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                                            Log.e("TTS", "Language not supported");
+                                        } else {
+                                            speak(text);
+                                        }
+                                    } else {
+                                        Log.e("TTS", "Initialization failed");
+                                    }
+                                }
+                            });
                             System.out.println("Hello hi: " + obj.toString());
                         } catch (JSONException e) {
                             e.printStackTrace();
